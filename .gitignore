@@ -1,0 +1,30 @@
+# Ambiente virtual
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# ROMs e artefatos grandes (não versionar)
+*.bin
+*.zip
+*.mp4
+
+# Jupyter
+.ipynb_checkpoints/
+
+# SO
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Resultados de experimentos (opcional versionar apenas gráficos finais)
+experimentos/logs/
+experimentos/*.csv

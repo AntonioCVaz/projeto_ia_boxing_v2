@@ -1,0 +1,5 @@
+pettingzoo[atari]==1.24.3
+autorom[accept-rom-license]
+numpy
+matplotlib
+gymnasium
