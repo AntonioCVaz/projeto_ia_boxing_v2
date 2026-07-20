@@ -59,9 +59,13 @@ def heuristica_distancia(px, py, ox, oy):
 
 
 class AgenteHeuristico:
-    # Limiar de distância para considerar "ao alcance de ataque".
-    # Valor inicial estimado -- ajustar após observar algumas partidas.
-    DISTANCIA_ATAQUE = 18
+    # Tolerância de alinhamento (em pixels) para considerar que o oponente
+    # está ao alcance do soco. IMPORTANTE: ações de soco (FIRE) TRAVAM o
+    # movimento do boxer -- descoberto empiricamente via debug_heuristico.py,
+    # onde o agente ficava preso trocando socos diagonais sem nunca fechar
+    # a distância. Por isso o agente só ataca quando já está bem alinhado,
+    # e usa SOMENTE movimento puro (sem FIRE) enquanto se aproxima.
+    TOLERANCIA_SOCO = 5
 
     def __init__(self, jogador="first_0"):
         assert jogador in ("first_0", "second_0")
@@ -74,11 +78,15 @@ class AgenteHeuristico:
         else:
             px, py, ox, oy = estado["p2_x"], estado["p2_y"], estado["p1_x"], estado["p1_y"]
 
+        dx, dy = ox - px, oy - py
+
+        # Só ataca quando já está bem alinhado nos dois eixos -- caso
+        # contrário, continua se aproximando com movimento puro (sem FIRE),
+        # já que socar trava a posição e impede fechar a distância restante.
+        if abs(dx) <= self.TOLERANCIA_SOCO and abs(dy) <= self.TOLERANCIA_SOCO:
+            return ACOES["FIRE"]
+
         distancia_atual = heuristica_distancia(px, py, ox, oy)
-
-        if distancia_atual <= self.DISTANCIA_ATAQUE:
-            return self._acao_de_ataque(px, py, ox, oy)
-
         return self._busca_gulosa_movimento(px, py, ox, oy, distancia_atual)
 
     def _busca_gulosa_movimento(self, px, py, ox, oy, distancia_atual):
@@ -91,18 +99,3 @@ class AgenteHeuristico:
                 melhor_h = h_simulado
                 melhor_acao = acao
         return melhor_acao
-
-    def _acao_de_ataque(self, px, py, ox, oy):
-        """Soco na direção do oponente."""
-        dx, dy = ox - px, oy - py
-        if abs(dx) < 3 and abs(dy) < 3:
-            return ACOES["FIRE"]
-        if dx > 0 and dy > 0:
-            return ACOES["DOWNRIGHTFIRE"]
-        if dx > 0 and dy < 0:
-            return ACOES["UPRIGHTFIRE"]
-        if dx < 0 and dy > 0:
-            return ACOES["DOWNLEFTFIRE"]
-        if dx < 0 and dy < 0:
-            return ACOES["UPLEFTFIRE"]
-        return ACOES["RIGHTFIRE"] if dx > 0 else ACOES["LEFTFIRE"]
