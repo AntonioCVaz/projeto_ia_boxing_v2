@@ -14,7 +14,7 @@ from src.heuristica.agente_heuristico import AgenteHeuristico
 from src.ambiente.extrair_estado import extrair_estado
 
 
-def rodar_uma_partida(seed, max_passos=3000):
+def rodar_uma_partida(seed, max_passos=6000):
     env = boxing_v2.env(obs_type="ram")
     env.reset(seed=seed)
     agente = AgenteHeuristico(jogador="first_0")
@@ -25,6 +25,16 @@ def rodar_uma_partida(seed, max_passos=3000):
     for agent in env.agent_iter():
         obs, reward, termination, truncation, info = env.last()
 
+        # Só atualiza o placar com base em frames VÁLIDOS (episódio ainda
+        # em andamento) -- depois que termination/truncation vira True, a
+        # RAM passa a refletir a tela de fim de round, não mais o placar
+        # real (foi assim que descobrimos o "placar 120": estávamos lendo
+        # o byte 18 depois do jogo já ter acabado).
+        if not (termination or truncation):
+            estado = extrair_estado(obs)
+            placar_final["placar_p1"] = estado["placar_p1"]
+            placar_final["placar_p2"] = estado["placar_p2"]
+
         if termination or truncation:
             action = None
         elif agent == "first_0":
@@ -33,12 +43,9 @@ def rodar_uma_partida(seed, max_passos=3000):
             action = env.action_space(agent).sample()
 
         env.step(action)
-        estado = extrair_estado(obs)
-        placar_final["placar_p1"] = estado["placar_p1"]
-        placar_final["placar_p2"] = estado["placar_p2"]
-
         passo += 1
-        if passo >= max_passos:
+
+        if passo >= max_passos or termination or truncation:
             break
 
     env.close()

@@ -12,7 +12,7 @@ from src.heuristica.agente_heuristico import AgenteHeuristico
 from src.ambiente.extrair_estado import extrair_estado
 
 
-def rodar_episodio(render=False, seed=42, max_passos=3000):
+def rodar_episodio(render=False, seed=42, max_passos=6000):
     env = boxing_v2.env(obs_type="ram", render_mode="human" if render else None)
     env.reset(seed=seed)
 
