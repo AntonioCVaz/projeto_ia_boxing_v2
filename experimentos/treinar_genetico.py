@@ -36,14 +36,33 @@ SEEDS_VALIDACAO = [9001, 9002, 9003]
 RNG = np.random.default_rng(42)
 
 
-def avaliar_fitness(pesos, seed):
-    """Roda um episódio completo e retorna placar_p1 - placar_p2."""
+def avaliar_fitness(pesos, seed, retornar_detalhes=False):
+    """
+    Roda um episódio completo e retorna o fitness combinando:
+      1. placar_p1 - placar_p2 (o objetivo real)
+      2. um pequeno bônus por proximidade média ao oponente ao longo do
+         episódio (reward shaping)
+
+    Por quê: nos primeiros treinos, a validação mostrou que indivíduos
+    "passivos" (que nunca se aproximam) tendiam a vencer a seleção, pois
+    engajar carrega risco de apanhar muito e o único sinal de fitness era
+    o placar final -- ficar parado e nunca perder era "seguro" demais.
+    O termo de proximidade dá um sinal mais denso, recompensando
+    aproximação mesmo antes do indivíduo aprender a de fato acertar
+    socos, evitando que a população convirja para a estratégia de "não
+    fazer nada".
+    """
+    from src.genetico.agente_genetico import extrair_features
+
+    PESO_PROXIMIDADE = 0.02
+
     env = boxing_v2.env(obs_type="ram")
     env.reset(seed=seed)
     agente = AgenteGenetico(pesos, jogador="first_0")
     agente.reset()
 
     placar_p1, placar_p2 = 0, 0
+    distancias = []
     passo = 0
 
     for agent in env.agent_iter():
@@ -52,6 +71,11 @@ def avaliar_fitness(pesos, seed):
         if not (termination or truncation):
             estado = extrair_estado(obs)
             placar_p1, placar_p2 = estado["placar_p1"], estado["placar_p2"]
+            if agent == "first_0":
+                features = extrair_features(estado, "first_0", agente.frames_desde_soco)
+                dx_norm, dy_norm = features[0], features[1]
+                dist_norm = (dx_norm ** 2 + dy_norm ** 2) ** 0.5
+                distancias.append(dist_norm)
 
         if termination or truncation:
             action = None
@@ -66,7 +90,15 @@ def avaliar_fitness(pesos, seed):
             break
 
     env.close()
-    return placar_p1 - placar_p2
+
+    resultado_partida = placar_p1 - placar_p2
+    distancia_media = float(np.mean(distancias)) if distancias else 1.0
+    bonus_proximidade = PESO_PROXIMIDADE * (1.0 - distancia_media)  # quanto menor a distância, maior o bônus
+    fitness = resultado_partida + bonus_proximidade
+
+    if retornar_detalhes:
+        return fitness, resultado_partida, distancia_media
+    return fitness
 
 
 def selecao_torneio(populacao, fitnesses):
@@ -90,12 +122,14 @@ def mutar(individuo):
 
 def avaliar_validacao(pesos):
     """
-    Avalia um indivíduo nas seeds FIXAS de validação e retorna a média.
-    Usado para medir o progresso real do campeão entre gerações, sem o
-    ruído de trocar de cenário a cada geração.
+    Avalia um indivíduo nas seeds FIXAS de validação e retorna a média do
+    RESULTADO REAL DA PARTIDA (placar_p1 - placar_p2, sem o bônus de
+    proximidade usado só para guiar a seleção). Usado para medir o
+    progresso real do campeão entre gerações, sem o ruído de trocar de
+    cenário a cada geração.
     """
-    fitnesses = [avaliar_fitness(pesos, seed=s) for s in SEEDS_VALIDACAO]
-    return float(np.mean(fitnesses))
+    resultados = [avaliar_fitness(pesos, seed=s, retornar_detalhes=True)[1] for s in SEEDS_VALIDACAO]
+    return float(np.mean(resultados))
 
 
 def treinar():
@@ -103,6 +137,8 @@ def treinar():
     historico_treino_melhor = []
     historico_treino_media = []
     historico_validacao = []
+    melhor_individuo_global = populacao[0].copy()
+    melhor_validacao_global = -float("inf")
 
     for geracao in range(N_GERACOES):
         seed_geracao = 2000 + geracao  # mesma seed para toda a população nesta geração (comparação justa)
@@ -115,6 +151,12 @@ def treinar():
         # Avalia o campeão desta geração num cenário fixo, para termos uma
         # curva de evolução comparável entre gerações (métrica reportável).
         fitness_validacao = avaliar_validacao(populacao[melhor_idx])
+
+        # Mantém registro do melhor indivíduo JÁ VISTO em qualquer geração
+        # (não necessariamente o elite da última geração).
+        if fitness_validacao > melhor_validacao_global:
+            melhor_validacao_global = fitness_validacao
+            melhor_individuo_global = populacao[melhor_idx].copy()
 
         historico_treino_melhor.append(melhor_fitness_treino)
         historico_treino_media.append(media_fitness_treino)
@@ -132,25 +174,22 @@ def treinar():
 
         populacao = nova_populacao
 
-    # Escolhe como "melhor final" o indivíduo com melhor validação já visto,
-    # não necessariamente o último da população
-    melhor_geracao = int(np.argmax(historico_validacao))
-    print(f"\nMelhor geracao por validacao: {melhor_geracao} (fitness={historico_validacao[melhor_geracao]:+.2f})")
+    print(f"\nMelhor validacao encontrada: {melhor_validacao_global:+.2f}")
 
-    melhor_final = populacao[0]
     Path("experimentos").mkdir(exist_ok=True)
-    np.save("experimentos/melhor_individuo_genetico.npy", melhor_final)
+    np.save("experimentos/melhor_individuo_genetico.npy", melhor_individuo_global)
     with open("experimentos/historico_fitness_genetico.json", "w") as f:
         json.dump({
             "melhor_treino": historico_treino_melhor,
             "media_treino": historico_treino_media,
             "validacao": historico_validacao,
+            "melhor_validacao_global": melhor_validacao_global,
         }, f, indent=2)
 
     print("\nTreinamento concluído.")
-    print("Melhor indivíduo salvo em experimentos/melhor_individuo_genetico.npy")
+    print("Melhor indivíduo (por validação) salvo em experimentos/melhor_individuo_genetico.npy")
     print("Histórico de fitness salvo em experimentos/historico_fitness_genetico.json")
-    return melhor_final, historico_validacao
+    return melhor_individuo_global, historico_validacao
 
 
 if __name__ == "__main__":
