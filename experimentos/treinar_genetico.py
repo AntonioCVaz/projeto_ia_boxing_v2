@@ -18,11 +18,20 @@ from src.genetico.agente_genetico import AgenteGenetico
 from src.ambiente.extrair_estado import extrair_estado
 
 TAMANHO_POPULACAO = 20
-N_GERACOES = 20
+N_GERACOES = 25
 TAXA_MUTACAO = 0.2
 DESVIO_MUTACAO = 0.3
 TAMANHO_TORNEIO = 3
-MAX_PASSOS_EPISODIO = 2000
+MAX_PASSOS_EPISODIO = 3000
+
+# Seeds FIXAS usadas só para medir a evolução real do melhor indivíduo ao
+# longo das gerações (não usadas na seleção, para não termos "trapaça" --
+# a seleção continua usando uma seed por geração, o que ajuda a evitar
+# overfitting a um único cenário; mas isso torna o "melhor" de cada
+# geração incomparável entre si, já que cada um foi avaliado num cenário
+# diferente. As seeds de validação resolvem isso: o mesmo cenário é usado
+# para medir o progresso do campeão a cada geração.)
+SEEDS_VALIDACAO = [9001, 9002, 9003]
 
 RNG = np.random.default_rng(42)
 
@@ -79,22 +88,40 @@ def mutar(individuo):
     return individuo + mascara * ruido
 
 
+def avaliar_validacao(pesos):
+    """
+    Avalia um indivíduo nas seeds FIXAS de validação e retorna a média.
+    Usado para medir o progresso real do campeão entre gerações, sem o
+    ruído de trocar de cenário a cada geração.
+    """
+    fitnesses = [avaliar_fitness(pesos, seed=s) for s in SEEDS_VALIDACAO]
+    return float(np.mean(fitnesses))
+
+
 def treinar():
     populacao = [AgenteGenetico.pesos_aleatorios(RNG) for _ in range(TAMANHO_POPULACAO)]
-    historico_melhor = []
-    historico_media = []
+    historico_treino_melhor = []
+    historico_treino_media = []
+    historico_validacao = []
 
     for geracao in range(N_GERACOES):
         seed_geracao = 2000 + geracao  # mesma seed para toda a população nesta geração (comparação justa)
         fitnesses = [avaliar_fitness(ind, seed=seed_geracao) for ind in populacao]
 
         melhor_idx = int(np.argmax(fitnesses))
-        melhor_fitness = fitnesses[melhor_idx]
-        media_fitness = float(np.mean(fitnesses))
-        historico_melhor.append(melhor_fitness)
-        historico_media.append(media_fitness)
+        melhor_fitness_treino = fitnesses[melhor_idx]
+        media_fitness_treino = float(np.mean(fitnesses))
 
-        print(f"Geracao {geracao:3d} | melhor={melhor_fitness:+.1f} | media={media_fitness:+.1f}")
+        # Avalia o campeão desta geração num cenário fixo, para termos uma
+        # curva de evolução comparável entre gerações (métrica reportável).
+        fitness_validacao = avaliar_validacao(populacao[melhor_idx])
+
+        historico_treino_melhor.append(melhor_fitness_treino)
+        historico_treino_media.append(media_fitness_treino)
+        historico_validacao.append(fitness_validacao)
+
+        print(f"Geracao {geracao:3d} | melhor(treino)={melhor_fitness_treino:+.1f} | "
+              f"media(treino)={media_fitness_treino:+.1f} | validacao={fitness_validacao:+.2f}")
 
         nova_populacao = [populacao[melhor_idx].copy()]  # elitismo: melhor sobrevive direto
         while len(nova_populacao) < TAMANHO_POPULACAO:
@@ -105,16 +132,25 @@ def treinar():
 
         populacao = nova_populacao
 
+    # Escolhe como "melhor final" o indivíduo com melhor validação já visto,
+    # não necessariamente o último da população
+    melhor_geracao = int(np.argmax(historico_validacao))
+    print(f"\nMelhor geracao por validacao: {melhor_geracao} (fitness={historico_validacao[melhor_geracao]:+.2f})")
+
     melhor_final = populacao[0]
     Path("experimentos").mkdir(exist_ok=True)
     np.save("experimentos/melhor_individuo_genetico.npy", melhor_final)
     with open("experimentos/historico_fitness_genetico.json", "w") as f:
-        json.dump({"melhor": historico_melhor, "media": historico_media}, f, indent=2)
+        json.dump({
+            "melhor_treino": historico_treino_melhor,
+            "media_treino": historico_treino_media,
+            "validacao": historico_validacao,
+        }, f, indent=2)
 
     print("\nTreinamento concluído.")
     print("Melhor indivíduo salvo em experimentos/melhor_individuo_genetico.npy")
     print("Histórico de fitness salvo em experimentos/historico_fitness_genetico.json")
-    return melhor_final, historico_melhor
+    return melhor_final, historico_validacao
 
 
 if __name__ == "__main__":
