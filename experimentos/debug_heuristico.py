@@ -8,7 +8,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pettingzoo.atari import boxing_v2
 from src.heuristica.agente_heuristico import AgenteHeuristico, heuristica_distancia, ACOES
 from src.ambiente.extrair_estado import extrair_estado

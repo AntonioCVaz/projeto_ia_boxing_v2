@@ -61,15 +61,25 @@ def heuristica_distancia(px, py, ox, oy):
 class AgenteHeuristico:
     # Tolerância de alinhamento (em pixels) para considerar que o oponente
     # está ao alcance do soco. IMPORTANTE: ações de soco (FIRE) TRAVAM o
-    # movimento do boxer -- descoberto empiricamente via debug_heuristico.py,
-    # onde o agente ficava preso trocando socos diagonais sem nunca fechar
-    # a distância. Por isso o agente só ataca quando já está bem alinhado,
-    # e usa SOMENTE movimento puro (sem FIRE) enquanto se aproxima.
-    TOLERANCIA_SOCO = 5
+    # movimento do boxer -- descoberto empiricamente via debug_heuristico.py.
+    # Também descobrimos que existe uma distância mínima FÍSICA de ~14px
+    # entre os dois lutadores (colisão dos sprites -- eles não conseguem
+    # se sobrepor), então o limiar precisa ser >= 14, senão o agente nunca
+    # sai do modo de movimento (ficava preso tentando chegar mais perto
+    # do que é fisicamente possível).
+    TOLERANCIA_SOCO = 16
+
+    # Nº mínimo de frames entre um soco e outro. Descoberto empiricamente:
+    # segurando FIRE em todo frame (sem soltar), o golpe nunca conectava --
+    # o jogo parece reiniciar a animação do soco a cada novo comando, sem
+    # deixá-la completar. O agente aleatório pontuava porque, por sorte,
+    # intercalava FIRE com outras ações, "soltando o botão" sem querer.
+    COOLDOWN_SOCO = 12
 
     def __init__(self, jogador="first_0"):
         assert jogador in ("first_0", "second_0")
         self.jogador = jogador
+        self.frames_desde_ultimo_soco = self.COOLDOWN_SOCO
 
     def escolher_acao(self, ram):
         estado = extrair_estado(ram)
@@ -79,15 +89,34 @@ class AgenteHeuristico:
             px, py, ox, oy = estado["p2_x"], estado["p2_y"], estado["p1_x"], estado["p1_y"]
 
         dx, dy = ox - px, oy - py
+        self.frames_desde_ultimo_soco += 1
 
         # Só ataca quando já está bem alinhado nos dois eixos -- caso
         # contrário, continua se aproximando com movimento puro (sem FIRE),
-        # já que socar trava a posição e impede fechar a distância restante.
+        # já que a distância horizontal mínima é limitada pela colisão
+        # física entre os lutadores.
         if abs(dx) <= self.TOLERANCIA_SOCO and abs(dy) <= self.TOLERANCIA_SOCO:
-            return ACOES["FIRE"]
+            if self.frames_desde_ultimo_soco >= self.COOLDOWN_SOCO:
+                self.frames_desde_ultimo_soco = 0
+                return self._acao_de_ataque(dy)
+            return ACOES["NOOP"]  # espera a animação do soco anterior terminar
 
         distancia_atual = heuristica_distancia(px, py, ox, oy)
         return self._busca_gulosa_movimento(px, py, ox, oy, distancia_atual)
+
+    def _acao_de_ataque(self, dy):
+        """
+        Soco mirado verticalmente no oponente. Hipótese testada: FIRE puro
+        (sem direção) sempre soca "reto" e erra quando o oponente está
+        um pouco acima/abaixo -- por isso miramos o soco no eixo vertical
+        (dy), já que o eixo horizontal já está no limite físico de colisão.
+        """
+        MARGEM_ALINHAMENTO_VERTICAL = 3
+        if dy > MARGEM_ALINHAMENTO_VERTICAL:
+            return ACOES["DOWNRIGHTFIRE"]
+        if dy < -MARGEM_ALINHAMENTO_VERTICAL:
+            return ACOES["UPRIGHTFIRE"]
+        return ACOES["FIRE"]
 
     def _busca_gulosa_movimento(self, px, py, ox, oy, distancia_atual):
         """Greedy best-first de profundidade 1 sobre as ações de movimento."""
