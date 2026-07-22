@@ -18,9 +18,19 @@ from pettingzoo.atari import boxing_v2
 from src.rl.agente_rl import AgenteRL
 from src.ambiente.extrair_estado import extrair_estado
 
-N_EPISODIOS = 500
+N_EPISODIOS = 1200
 MAX_PASSOS_POR_EPISODIO = 3000
 SALVAR_A_CADA = 50
+
+# epsilon_decay calculado dinamicamente para que, ao final de N_EPISODIOS,
+# o epsilon chegue perto do epsilon_min. BUG CORRIGIDO: a primeira versão
+# usava epsilon_decay=0.9995 fixo, que precisaria de ~6000 episódios para
+# decair de 1.0 para 0.05 -- com apenas 500 episódios, o agente ainda
+# escolhia ações aleatórias em ~78% dos passos ATÉ NO FIM DO TREINO,
+# nunca chegando a explorar de fato a política aprendida.
+EPSILON_INICIAL = 1.0
+EPSILON_MIN = 0.05
+EPSILON_DECAY = (EPSILON_MIN / EPSILON_INICIAL) ** (1 / N_EPISODIOS)
 
 
 def rodar_episodio_treino(agente, seed):
@@ -65,7 +75,12 @@ def rodar_episodio_treino(agente, seed):
 
 
 def treinar():
-    agente = AgenteRL(jogador="first_0")
+    agente = AgenteRL(
+        jogador="first_0",
+        epsilon=EPSILON_INICIAL,
+        epsilon_min=EPSILON_MIN,
+        epsilon_decay=EPSILON_DECAY,
+    )
     historico_diferenca = []
     historico_epsilon = []
 
