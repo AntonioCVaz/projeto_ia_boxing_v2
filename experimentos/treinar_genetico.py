@@ -23,6 +23,17 @@ TAXA_MUTACAO = 0.2
 DESVIO_MUTACAO = 0.3
 TAMANHO_TORNEIO = 3
 MAX_PASSOS_EPISODIO = 3000
+N_SEEDS_POR_AVALIACAO = 2  # media de N partidas por individuo, para reduzir ruido
+
+# CURRÍCULO: nas primeiras metade das gerações, o oponente fica PARADO
+# (NOOP o tempo todo). Isso remove o risco de apanhar muito ao se
+# aproximar, permitindo que a população aprenda a "buscar e atacar" sem
+# ser punida por isso -- só depois disso aprendido é que trocamos para o
+# oponente aleatório, para testar generalização. Diagnóstico anterior:
+# sem currículo, a evolução convergia para "nunca se aproximar", pois
+# aproximar-se de um oponente aleatório é arriscado demais para um
+# indivíduo recém-nascido (pesos aleatórios) aprender por tentativa e erro.
+GERACOES_COM_CURRICULO = N_GERACOES // 2
 
 # Seeds FIXAS usadas só para medir a evolução real do melhor indivíduo ao
 # longo das gerações (não usadas na seleção, para não termos "trapaça" --
@@ -36,21 +47,16 @@ SEEDS_VALIDACAO = [9001, 9002, 9003]
 RNG = np.random.default_rng(42)
 
 
-def avaliar_fitness(pesos, seed, retornar_detalhes=False):
+def avaliar_fitness(pesos, seed, oponente_parado=False, retornar_detalhes=False):
     """
     Roda um episódio completo e retorna o fitness combinando:
       1. placar_p1 - placar_p2 (o objetivo real)
       2. um pequeno bônus por proximidade média ao oponente ao longo do
          episódio (reward shaping)
 
-    Por quê: nos primeiros treinos, a validação mostrou que indivíduos
-    "passivos" (que nunca se aproximam) tendiam a vencer a seleção, pois
-    engajar carrega risco de apanhar muito e o único sinal de fitness era
-    o placar final -- ficar parado e nunca perder era "seguro" demais.
-    O termo de proximidade dá um sinal mais denso, recompensando
-    aproximação mesmo antes do indivíduo aprender a de fato acertar
-    socos, evitando que a população convirja para a estratégia de "não
-    fazer nada".
+    oponente_parado=True faz o oponente (second_0) ficar em NOOP o tempo
+    todo -- usado nas gerações de currículo, para reduzir o risco de
+    aproximação nas primeiras gerações.
     """
     from src.genetico.agente_genetico import extrair_features
 
@@ -81,6 +87,8 @@ def avaliar_fitness(pesos, seed, retornar_detalhes=False):
             action = None
         elif agent == "first_0":
             action = agente.escolher_acao(obs)
+        elif oponente_parado:
+            action = 0  # NOOP
         else:
             action = env.action_space(agent).sample()
 
@@ -99,6 +107,17 @@ def avaliar_fitness(pesos, seed, retornar_detalhes=False):
     if retornar_detalhes:
         return fitness, resultado_partida, distancia_media
     return fitness
+
+
+def avaliar_fitness_medio(pesos, seed_base, oponente_parado=False):
+    """Roda N_SEEDS_POR_AVALIACAO partidas (seeds diferentes) e retorna a
+    média do fitness, para reduzir o ruído de uma única partida (fonte da
+    alta variância observada na validação: resultados de -13 a 0)."""
+    valores = [
+        avaliar_fitness(pesos, seed=seed_base + i, oponente_parado=oponente_parado)
+        for i in range(N_SEEDS_POR_AVALIACAO)
+    ]
+    return float(np.mean(valores))
 
 
 def selecao_torneio(populacao, fitnesses):
@@ -141,8 +160,12 @@ def treinar():
     melhor_validacao_global = -float("inf")
 
     for geracao in range(N_GERACOES):
-        seed_geracao = 2000 + geracao  # mesma seed para toda a população nesta geração (comparação justa)
-        fitnesses = [avaliar_fitness(ind, seed=seed_geracao) for ind in populacao]
+        seed_geracao = 2000 + geracao * 10  # espaçadas para não colidir com N_SEEDS_POR_AVALIACAO
+        usar_curriculo = geracao < GERACOES_COM_CURRICULO
+        fitnesses = [
+            avaliar_fitness_medio(ind, seed_base=seed_geracao, oponente_parado=usar_curriculo)
+            for ind in populacao
+        ]
 
         melhor_idx = int(np.argmax(fitnesses))
         melhor_fitness_treino = fitnesses[melhor_idx]
@@ -163,7 +186,8 @@ def treinar():
         historico_validacao.append(fitness_validacao)
 
         print(f"Geracao {geracao:3d} | melhor(treino)={melhor_fitness_treino:+.1f} | "
-              f"media(treino)={media_fitness_treino:+.1f} | validacao={fitness_validacao:+.2f}")
+              f"media(treino)={media_fitness_treino:+.1f} | validacao={fitness_validacao:+.2f} | "
+              f"{'curriculo(parado)' if usar_curriculo else 'aleatorio'}")
 
         nova_populacao = [populacao[melhor_idx].copy()]  # elitismo: melhor sobrevive direto
         while len(nova_populacao) < TAMANHO_POPULACAO:
