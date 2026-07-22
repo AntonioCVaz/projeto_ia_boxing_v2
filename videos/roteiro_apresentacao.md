@@ -141,10 +141,10 @@ vivo ou gravação]
 "Depois dessas três correções, o agente final fica colado no oponente e
 vence boa parte das partidas por nocaute. Aqui está ele jogando ao vivo."
 
-**P2:** [MOSTRAR: resultado de `avaliar_heuristico.py`]
-"No protocolo de avaliação -- 20 execuções contra o agente aleatório --
-o heurístico teve taxa de vitória de [PREENCHER %], com placar médio de
-[PREENCHER] contra [PREENCHER] do aleatório."
+**P2:** [MOSTRAR: resultado de `comparar_agentes.py`]
+"No protocolo de avaliação -- 30 execuções contra o agente aleatório --
+o heurístico teve taxa de vitória de 57%, com uma diferença média de
+placar de +103.20 a favor dele."
 
 ---
 
@@ -187,8 +187,9 @@ testar se a estratégia aprendida generaliza."
 
 **P1:** [MOSTRAR: saída do treino final, com a transição de
 "curriculo(parado)" pra "aleatorio"]
-"E funcionou: o agente foi de zero vitórias para uma taxa de [PREENCHER
-%] de vitórias depois do currículo."
+"E funcionou: o agente foi de zero vitórias para uma taxa de 90% de
+vitórias contra o agente aleatório -- na verdade, a maior taxa de
+vitória entre os três agentes que implementamos."
 
 **P2:** [MOSTRAR: `python src/genetico/main.py` ou script equivalente com
 `render=True`]
@@ -219,18 +220,20 @@ estava calibrado pra um treino bem mais longo."
 
 **P2:** "A correção foi calcular o decaimento do epsilon dinamicamente, em
 função do número de episódios de treino, garantindo que ele realmente
-chegasse perto do mínimo até o fim -- e aumentamos o treino pra
-[PREENCHER número] episódios."
+chegasse perto do mínimo até o fim -- e aumentamos o treino de 500 para
+1200 episódios."
 
 **P1:** [MOSTRAR: `python src/rl/main.py` com `render=True`]
 "Aqui está o agente de RL jogando com a política já treinada, sem mais
 exploração aleatória."
 
 **P2:** [MOSTRAR: resultado da avaliação do RL]
-"No protocolo de avaliação, o RL teve taxa de vitória de [PREENCHER %]
-contra o agente aleatório -- [comentar se ficou atrás dos outros dois e
-por quê: espaço de estados discretizado grosseiramente / poucos episódios
-de treino comparado à complexidade do jogo]."
+"No protocolo de avaliação, o RL teve taxa de vitória de 20% contra o
+agente aleatório -- de longe o mais fraco dos três, mesmo depois da
+correção do epsilon. A explicação mais provável é a combinação de um
+espaço de estados discretizado de forma grosseira com um volume de
+treino ainda pequeno pra convergir de verdade dentro do prazo do
+projeto."
 
 ---
 
@@ -241,20 +244,37 @@ de treino comparado à complexidade do jogo]."
 **P1:** [MOSTRAR: tabela de `comparar_agentes.py`, cada agente vs.
 aleatório]
 "Rodamos os três agentes contra o agente aleatório, 30 execuções cada,
-mesmo protocolo pra todos. [Ler a tabela e comentar os números reais]"
+mesmo protocolo pra todos. O Heurístico teve 57% de taxa de vitória e
+diferença média de placar de +103. O Genético teve a maior taxa de
+vitória, 90%, mas com diferença média menor, +68. E o RL ficou bem
+atrás, com só 20% de vitórias."
 
 **P2:** [MOSTRAR: tabela de `lutar_agentes.py`, os agentes uns contra os
 outros, incluindo cada um contra si mesmo]
 "E também fizemos os agentes lutarem diretamente entre si -- inclusive
-cada um contra si mesmo, pra ver o comportamento em espelho. [Ler a
-tabela e comentar: qual agente venceu qual confronto e por quê, ligando
-com a lógica de cada paradigma explicada antes]"
+cada um contra si mesmo. Os autoconfrontos, Heurístico contra Heurístico
+e Genético contra Genético, empataram exatamente -- e isso é o resultado
+esperado, não um erro: como o protocolo alterna quem joga em qual
+posição, dois agentes idênticos devem empatar em média, o que valida que
+nossa metodologia de avaliação está cancelando bem o viés posicional."
 
-**P1:** "Resumindo: o agente heurístico teve o melhor desempenho geral,
-porque a heurística foi desenhada diretamente com conhecimento do
-domínio. O genético, depois do currículo, chegou perto. O RL foi o mais
-limitado, principalmente pela discretização grosseira do espaço de
-estados e pelo tempo de treino."
+**P1:** "O dado mais interessante foi o confronto direto entre
+Heurístico e Genético: mesmo o Genético tendo taxa de vitória bem maior
+contra o aleatório, no confronto direto os dois empataram. Isso mostra
+que taxa de vitória contra um oponente fraco não necessariamente prevê o
+resultado contra um oponente forte -- os dois parecem ter desenvolvido
+estilos de jogo diferentes, um mais 'tudo ou nada' e outro mais
+'consistente'."
+
+**P2:** "E nos confrontos contra o RL, tanto o Heurístico quanto o
+Genético dominaram completamente -- o RL nunca venceu nenhum dos dois.
+E RL contra RL empatou todas as 20 partidas, o que reforça que a
+política aprendida ainda é bastante passiva."
+
+**P1:** "Resumindo: o agente heurístico e o genético ficaram parelhos
+entre si e claramente à frente do RL, principalmente pela discretização
+grosseira do espaço de estados e pelo tempo de treino limitado que
+tivemos disponível no prazo do projeto."
 
 ---
 
@@ -291,8 +311,8 @@ está pedindo aqui."
 
 ## Checklist antes de gravar
 
-- [ ] Preencher todos os `[PREENCHER]` com os números reais das
-      avaliações finais
+- [x] Números reais já preenchidos em todas as seções (heurístico 57%/+103.20,
+      genético 90%/+67.93, RL 20%/-3.93, confrontos diretos incluídos)
 - [ ] Testar a renderização (`render=True`) de cada agente antes de
       gravar, pra garantir que a janela abre sem erro
 - [ ] Ter os arquivos de código já abertos nas abas certas, pra não

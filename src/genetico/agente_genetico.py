@@ -110,3 +110,23 @@ Possíveis melhorias futuras (não implementadas por restrição de tempo):
 - Usar uma representação de política não-linear (rede neural pequena)
   em vez de uma única camada linear
 """
+
+
+"""
+ATUALIZAÇÃO -- o problema acima foi resolvido (ver experimentos/resultado_genetico.md):
+
+A nota de desenvolvimento acima descreve o diagnóstico do reward hacking
+que fez a primeira versão do agente genético convergir para uma
+estratégia passiva (0% de vitórias). A correção aplicada foi um
+CURRÍCULO DE TREINAMENTO: nas primeiras metade das gerações, o oponente
+de treino ficava parado (NOOP constante), removendo o risco de
+aproximação e permitindo que a população aprendesse a se aproximar e
+atacar sem punição. Só depois disso o oponente aleatório foi
+reintroduzido, testando a generalização da estratégia aprendida.
+
+Resultado final: 90% de taxa de vitória contra o agente aleatório (27
+vitórias, 3 empates, 0 derrotas em 30 execuções) -- a maior taxa de
+vitória entre os três agentes implementados no projeto, embora com
+diferença média de placar menor que a do agente heurístico (ver
+comparação completa em experimentos/resultado_genetico.md).
+"""

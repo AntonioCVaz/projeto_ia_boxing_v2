@@ -1,0 +1,44 @@
+[
+  {
+    "confronto": "Heuristico vs Heuristico",
+    "vitorias_a": 10,
+    "vitorias_b": 10,
+    "empates": 0,
+    "media_diferenca_placar_a": 0.0
+  },
+  {
+    "confronto": "Heuristico vs Genetico",
+    "vitorias_a": 10,
+    "vitorias_b": 10,
+    "empates": 0,
+    "media_diferenca_placar_a": 0.0
+  },
+  {
+    "confronto": "Heuristico vs RL",
+    "vitorias_a": 20,
+    "vitorias_b": 0,
+    "empates": 0,
+    "media_diferenca_placar_a": 196.0
+  },
+  {
+    "confronto": "Genetico vs Genetico",
+    "vitorias_a": 10,
+    "vitorias_b": 10,
+    "empates": 0,
+    "media_diferenca_placar_a": 0.0
+  },
+  {
+    "confronto": "Genetico vs RL",
+    "vitorias_a": 10,
+    "vitorias_b": 0,
+    "empates": 10,
+    "media_diferenca_placar_a": 100.0
+  },
+  {
+    "confronto": "RL vs RL",
+    "vitorias_a": 0,
+    "vitorias_b": 0,
+    "empates": 20,
+    "media_diferenca_placar_a": 0.0
+  }
+]
