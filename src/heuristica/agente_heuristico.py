@@ -76,10 +76,25 @@ class AgenteHeuristico:
     # intercalava FIRE com outras ações, "soltando o botão" sem querer.
     COOLDOWN_SOCO = 12
 
+    # Detecção de "travamento no canto do ringue": um comportamento real
+    # do Boxing original do Atari em que dois jogadores presos no canto,
+    # empurrando contra a parede, têm dificuldade de se acertar --
+    # descoberto empiricamente via debug_confronto.py (heurístico x
+    # genético ficou com distância travada em exatos 15px por 2400+
+    # frames seguidos, socando repetidamente sem nunca conectar). Se a
+    # posição do oponente não mudar por muitos frames seguidos mesmo
+    # tentando atacar, o agente recua um pouco para se reposicionar,
+    # em vez de insistir preso no mesmo lugar.
+    LIMIAR_TRAVAMENTO = 40  # frames sem a posição relativa mudar
+    FRAMES_RECUO = 10
+
     def __init__(self, jogador="first_0"):
         assert jogador in ("first_0", "second_0")
         self.jogador = jogador
         self.frames_desde_ultimo_soco = self.COOLDOWN_SOCO
+        self._ultima_posicao_relativa = None
+        self._frames_parado = 0
+        self._frames_recuando = 0
 
     def escolher_acao(self, ram):
         estado = extrair_estado(ram)
@@ -90,6 +105,24 @@ class AgenteHeuristico:
 
         dx, dy = ox - px, oy - py
         self.frames_desde_ultimo_soco += 1
+
+        posicao_relativa = (dx, dy)
+        if posicao_relativa == self._ultima_posicao_relativa:
+            self._frames_parado += 1
+        else:
+            self._frames_parado = 0
+        self._ultima_posicao_relativa = posicao_relativa
+
+        # Se está travado (posição sem mudar por muitos frames) enquanto
+        # ao alcance de ataque, recua um pouco antes de tentar de novo --
+        # quebra o "impasse de canto" em vez de insistir preso no lugar.
+        if self._frames_parado >= self.LIMIAR_TRAVAMENTO:
+            self._frames_recuando = self.FRAMES_RECUO
+            self._frames_parado = 0
+
+        if self._frames_recuando > 0:
+            self._frames_recuando -= 1
+            return self._acao_de_recuo(dx, dy)
 
         # Só ataca quando já está bem alinhado nos dois eixos -- caso
         # contrário, continua se aproximando com movimento puro (sem FIRE),
@@ -103,6 +136,14 @@ class AgenteHeuristico:
 
         distancia_atual = heuristica_distancia(px, py, ox, oy)
         return self._busca_gulosa_movimento(px, py, ox, oy, distancia_atual)
+
+    def _acao_de_recuo(self, dx, dy):
+        """Move na direção OPOSTA ao oponente, para sair do canto travado."""
+        if dx > 0:
+            return ACOES["LEFT"]
+        if dx < 0:
+            return ACOES["RIGHT"]
+        return ACOES["UP"] if dy > 0 else ACOES["DOWN"]
 
     def _acao_de_ataque(self, dy):
         """
