@@ -2,7 +2,7 @@
 
 **Disciplina:** Bacharelado em Ciência da Computação — UFAPE
 **Professor:** Luis Filipe
-**Dupla:** NOME_1, NOME_2
+**Dupla:** Antônio Carlos da Silva Batista Vaz, Paulo Eduardo Vieira Souza
 
 ## Objetivo
 
@@ -72,7 +72,7 @@ Requer Python 3.10 ou 3.11 (recomendado por compatibilidade com PettingZoo/ALE).
 
 ```bash
 # 1. Clonar o repositório
-git clone <URL_DO_REPOSITORIO>
+git clone https://github.com/AntonioCVaz/projeto_ia_boxing_v2/tree/main
 cd projeto-ia
 
 # 2. Criar e ativar ambiente virtual
@@ -199,9 +199,5 @@ documento citado.
 - [x] Implementação do agente genético (com correção de reward hacking via currículo)
 - [x] Implementação do agente de RL (com correção de decaimento do epsilon)
 - [x] Execução de experimentos comparativos (vs. aleatório e entre os agentes)
-- [ ] Gravação do vídeo de apresentação (roteiro pronto em `videos/roteiro_apresentacao.md`)
-- [ ] Entrega final (24/07/2026)
-
-## Licença
-
-Trabalho acadêmico desenvolvido para a disciplina de Inteligência Artificial (UFAPE).
+- [x] Gravação do vídeo de apresentação (roteiro pronto em `videos/roteiro_apresentacao.md`)
+- [x] Entrega final (24/07/2026)
