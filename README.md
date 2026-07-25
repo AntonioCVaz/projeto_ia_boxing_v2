@@ -59,7 +59,7 @@ projeto-ia/
 │   ├── treinar_rl.py                # treino do agente de RL
 │   ├── comparar_agentes.py          # compara os 3 agentes vs. aleatório
 │   ├── lutar_agentes.py             # os 3 agentes lutando entre si (+ self-play)
-│   ├── renderizar_confronto.py      # renderiza AO VIVO um confronto específico
+│   ├── renderizar_confronto.py      # renderiza um confronto específico
 │   ├── resultado_genetico.md        # resultado final do genético + comparação
 │   └── resultado_confrontos_diretos.md  # análise dos confrontos diretos
 └── videos/
@@ -152,7 +152,7 @@ python experimentos/lutar_agentes.py
 Resultado salvo em `experimentos/resultado_confrontos_diretos.json`,
 interpretação completa em `experimentos/resultado_confrontos_diretos.md`.
 
-### 6. Renderizar AO VIVO um confronto específico entre dois agentes
+### 6. Renderizar um confronto específico entre dois agentes
 
 Para gravar o vídeo mostrando dois agentes lutando entre si (por
 exemplo, Heurístico vs. Genético):
